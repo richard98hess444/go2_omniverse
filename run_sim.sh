@@ -22,12 +22,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-source /opt/ros/${ROS_DISTRO}/setup.bash
-cd IsaacSim-ros_workspaces/${ROS_DISTRO}_ws
-rosdep install --from-paths src --ignore-src -r -y
-colcon build
-source install/setup.bash
-cd ../..
+# source /opt/ros/${ROS_DISTRO}/setup.bash
+# cd IsaacSim-ros_workspaces/${ROS_DISTRO}_ws
+# rosdep install --from-paths src --ignore-src -r -y
+# colcon build
+# source install/setup.bash
+# cd ../..
 cd go2_omniverse_ws
 rosdep install --from-paths src --ignore-src -r -y
 colcon build
@@ -39,4 +39,4 @@ conda activate orbit
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
 # Run the Python script
-python main.py --robot_amount 1 --robot go2 --terrain flat
+python main.py --robot_amount 1 --robot go1_flat --terrain flat

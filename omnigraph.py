@@ -61,3 +61,35 @@ def create_front_cam_omnigraph(robot_num):
 
         },
     )
+
+# def create_ros2_clock():
+#     graph_path = f"/ROS_Clock"
+#     og.Controller.edit(
+#         {"graph_path": graph_path, 
+#          "evaluator_name": "execution",
+#          "pipeline_stage": og.GraphPipelineStage.GRAPH_PIPELINE_STAGE_SIMULATION,},
+#         {
+#             og.Controller.Keys.CREATE_NODES: [
+#                 ("ReadSimTime", "omni.isaac.core_nodes.IsaacReadSimulationTime"),
+#                 ("Context", "omni.isaac.ros2_bridge.ROS2Context"),
+#                 ("PublishClock", "omni.isaac.ros2_bridge.ROS2PublishClock"),
+#                 # ("OnImpulseEvent", "omni.graph.action.OnImpulseEvent"),
+#                 ("OnPlaybackTick", "omni.graph.action.OnPlaybackTick"),
+#             ],
+#             og.Controller.Keys.CONNECT: [
+#                 # Connecting execution of OnImpulseEvent node to PublishClock so it will only publish when an impulse event is triggered
+#                 # ("OnImpulseEvent.outputs:execOut", "PublishClock.inputs:execIn"),
+#                 ("OnPlaybackTick.outputs:tick", "PublishClock.inputs:execIn"),
+#                 # Connecting simulationTime data of ReadSimTime to the clock publisher node
+#                 ("ReadSimTime.outputs:simulationTime", "PublishClock.inputs:timeStamp"),
+#                 # Connecting the ROS2 Context to the clock publisher node so it will run under the specified ROS2 Domain ID
+#                 ("Context.outputs:context", "PublishClock.inputs:context"),
+#             ],
+#             og.Controller.Keys.SET_VALUES: [
+#                 # Assigning topic name to clock publisher
+#                 ("PublishClock.inputs:topicName", "/clock"),
+#                 # Assigning a Domain ID of 1 to Context node
+#                 ("Context.inputs:domain_id", 1),
+#             ],
+#         },
+#     )

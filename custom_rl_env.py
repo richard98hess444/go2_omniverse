@@ -39,6 +39,7 @@ from omni.isaac.orbit.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from omni.isaac.orbit.terrains import TerrainImporterCfg
 from omni.isaac.orbit.utils import configclass
 from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG 
+from omni.isaac.orbit_assets.unitree import UNITREE_GO1_CFG 
 from omni.isaac.orbit.managers import EventTermCfg as EventTerm
 from omni.isaac.orbit.managers import ObservationGroupCfg as ObsGroup
 from omni.isaac.orbit.managers import ObservationTermCfg as ObsTerm
@@ -78,6 +79,16 @@ class MySceneCfg(InteractiveSceneCfg):
             prim_path="/World/ground",
             terrain_type="plane",
             debug_vis=False,
+        )
+        qrc_map = AssetBaseCfg(
+            prim_path="{ENV_REGEX_NS}/map",
+            spawn=sim_utils.UsdFileCfg(
+                # usd_path="./envs/map_flat.usd"
+                usd_path="./envs/qrc_flat_1.usd"
+            ),
+            init_state=AssetBaseCfg.InitialStateCfg(
+                pos=(0.0, 0.0, 0.0), rot=(1.0, 0.0, 0.0, 0.0)
+            ),
         )
     else:
         terrain = TerrainImporterCfg(
@@ -253,6 +264,33 @@ class EventCfg:
             "num_buckets": 64,
         },
     )
+    reset_base = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {
+                "x": (6.15, 6.15),
+                "y": (4.55, 4.55),
+                "yaw": (-1.57, -1.57)
+            },
+            "velocity_range": {
+                "x": (-0.0, 0.0),
+                "y": (-0.0, 0.0),
+                "z": (-0.0, 0.0),
+                "roll": (-0.0, 0.0),
+                "pitch": (-0.0, 0.0),
+                "yaw": (-0.0, 0.0),
+            },
+        },
+    )
+    reset_robot_joints = EventTerm(
+        func=mdp.reset_joints_by_scale,
+        mode="reset",
+        params={
+            "position_range": (0.0, 0.0),
+            "velocity_range": (0.0, 0.0),
+        },
+    )
 
 
 @configclass
@@ -274,7 +312,7 @@ class LocomotionVelocityRoughEnvCfg(RLTaskEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 4
-        self.episode_length_s = 20.0
+        self.episode_length_s = 1000000.0
         # simulation settings
         self.sim.dt = 0.005
         self.sim.disable_contact_processing = True
@@ -321,6 +359,71 @@ class UnitreeGo2CustomEnvCfg(LocomotionVelocityRoughEnvCfg):
         # terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = "base"
 
+
+@configclass
+class UnitreeGo1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
+    def __post_init__(self):
+        # post init of parent
+        super().__post_init__()
+
+        self.scene.robot = UNITREE_GO1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/trunk"
+        # scale down the terrains because the robot is small
+        # self.scene.terrain.terrain_generator.sub_terrains["boxes"].grid_height_range = (0.025, 0.1)
+        # self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_range = (0.01, 0.06)
+        # self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_step = 0.01
+
+        # reduce action scale
+        self.actions.joint_pos.scale = 0.25
+
+        # event
+        self.events.push_robot = None
+        # self.events.add_base_mass.params["mass_range"] = (-1.0, 3.0)
+        # self.events.add_base_mass.params["asset_cfg"].body_names = "trunk"
+        # self.events.base_external_force_torque.params["asset_cfg"].body_names = "trunk"
+        self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
+        self.events.reset_base.params = {
+            "pose_range": {"x": (6.15, 6.15), "y": (4.55, 4.55), "yaw": (-1.57, -1.57)},
+            "velocity_range": {
+                "x": (0.0, 0.0),
+                "y": (0.0, 0.0),
+                "z": (0.0, 0.0),
+                "roll": (0.0, 0.0),
+                "pitch": (0.0, 0.0),
+                "yaw": (0.0, 0.0),
+            },
+        }
+
+        # rewards
+        self.rewards.feet_air_time.params["sensor_cfg"].body_names = ".*_foot"
+        self.rewards.feet_air_time.weight = 0.01
+        self.rewards.undesired_contacts = None
+        self.rewards.dof_torques_l2.weight = -0.0002
+        self.rewards.track_lin_vel_xy_exp.weight = 1.5
+        self.rewards.track_ang_vel_z_exp.weight = 0.75
+        self.rewards.dof_acc_l2.weight = -2.5e-7
+
+        # terminations
+        self.terminations.base_contact.params["sensor_cfg"].body_names = "trunk"
+
+@configclass
+class UnitreeGo1FlatEnvCfg(UnitreeGo1RoughEnvCfg):
+    def __post_init__(self):
+        # post init of parent
+        super().__post_init__()
+
+        # override rewards
+        self.rewards.flat_orientation_l2.weight = -2.5
+        self.rewards.feet_air_time.weight = 0.25
+
+        # change terrain to flat
+        self.scene.terrain.terrain_type = "plane"
+        self.scene.terrain.terrain_generator = None
+        # no height scan
+        self.scene.height_scanner = None
+        self.observations.policy.height_scan = None
+        # no terrain curriculum
+        self.curriculum.terrain_levels = None
 
 @configclass
 class G1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
